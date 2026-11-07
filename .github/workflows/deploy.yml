@@ -1,16 +1,35 @@
-on: push
-name: ?? Deploy website on push
+name: Deploy PHP website
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
 jobs:
-  web-deploy:
-    name: ?? Deploy
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: ?? Get latest code
-      uses: actions/checkout@v3
-    
-    - name: ?? Sync files
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-      with:
-        server: 62.171.182.51
-        username: ftp_vcely_szeiner_com
-        password: ${{ secrets.ftp_password_1 }}
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Check PHP syntax
+        run: find public -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Deploy built web and PHP files
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: 62.171.182.51
+          username: ftp_vcely_szeiner_com
+          password: ${{ secrets.ftp_password_1 }}
+          local-dir: ./dist/
+          server-dir: ./
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            config.local.php
+            **/config.local.php

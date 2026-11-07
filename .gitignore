@@ -4,3 +4,4 @@ data/
 .env
 .env.*
 !.env.example
+public/config.local.php

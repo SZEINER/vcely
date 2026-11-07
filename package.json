@@ -8,12 +8,9 @@
     "dev:api": "node --watch server/index.js",
     "dev:web": "vite --host 0.0.0.0",
     "build": "vite build",
-    "start": "node server/index.js",
     "android:add": "npx cap add android",
     "android:sync": "npm run build && npx cap sync android",
-    "android:open": "npx cap open android",
-    "migrate": "node server/migrate.js",
-    "start:production": "npm run build && node server/index.js"
+    "android:open": "npx cap open android"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",

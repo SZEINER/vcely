@@ -4,7 +4,7 @@ Responzivní React aplikace pro evidenci včelstev. Obsahuje registraci, přihl�
 
 ## Spuštění
 
-Vyžaduje Node.js 24+. Spusťte `npm install` a `npm run dev`, potom otevřete http://localhost:5173. Lokálně se používá SQLite v `data/vcely.sqlite`.
+Pro místní vývoj spusťte `npm install` a `npm run dev`, potom otevřete http://localhost:5173. Místní vývojový server dál používá SQLite v `data/vcely.sqlite`, aby zůstala dostupná dosavadní lokální data. Produkční hosting používá PHP a MySQL.
 
 ## Android
 
@@ -12,18 +12,19 @@ Projekt obsahuje konfiguraci Capacitoru. Pro sestavení otevřete projekt v Andr
 
 ## Provoz
 
-Produkční server používá MySQL. Zkopírujte `.env.example` do `.env` pouze na serveru a vyplňte `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, případně `DB_PORT` a `DB_SSL`. Soubor `.env` je ignorován Gitem a nesmí se nahrát do repozitáře. Hosting musí umět provozovat Node.js aplikaci a směrovat HTTPS provoz na její port.
+Hosting vyžaduje PHP 8.1+ s `pdo_mysql`, MySQL a Apache s povoleným `.htaccess` a `mod_rewrite`. Node.js je potřeba pouze při sestavení Reactu, ne na produkčním serveru.
 
-Po nahrání kódu na server spusťte:
+Web sestavte příkazem:
 
 ```sh
 npm ci
 npm run build
-NODE_ENV=production npm start
 ```
 
-Pak otevřete `https://vaše-doména/run-migrace`. Stránka bez přihlášení vytvoří chybějící tabulky a zobrazí výsledek. Provedené migrace eviduje v `schema_migrations`; opakované otevření je bezpečné. Stejnou operaci lze spustit na serveru příkazem `npm run migrate`. Veřejná stránka je určená jen pro ruční správu schématu; po prvním nasazení ji lze na serveru vypnout nebo omezit podle možností hostingu.
+GitHub Actions při pushi do `main` sestaví web a nahraje **obsah** složky `dist/` přes existující FTP připojení. Na serveru vytvořte v kořeni webu `config.local.php` podle [public/config.local.example.php](public/config.local.example.php) a doplňte databázové heslo. Tento soubor nesmí být v Gitu a nasazovací workflow jej nevytváří ani nenahrává. Předvyplněný název databáze vychází z dostupných údajů; v administraci hostingu ověřte jeho přesný tvar.
 
-GitHub Actions zatím jen ověřuje sestavení a ke skutečné databázi se nepřipojuje. Samotný push na GitHub tedy migraci nespustí. Server musí nejprve stáhnout nový kód, nainstalovat závislosti, sestavit web a běžet jako Node.js aplikace. Příkaz `npm run start:production` sestaví web a spustí server; migraci pak provedete ručně otevřením stránky.
+Pak otevřete `https://vaše-doména/run-migrace`. Stránka bez přihlášení vytvoří chybějící tabulky a zobrazí výsledek. Provedené migrace eviduje v `schema_migrations`; opakované otevření je bezpečné.
+
+GitHub Actions také ověřuje syntaxi PHP. Samotný push migraci nespustí; po nasazení ji spustíte ručně otevřením `/run-migrace`.
 
 Aplikace je první funkční verze. Před veřejným provozem je vhodné doplnit obnovu hesla, ověření e-mailu a ochranu proti hromadným pokusům o přihlášení.

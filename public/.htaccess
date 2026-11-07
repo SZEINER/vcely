@@ -1,0 +1,11 @@
+Options -Indexes
+DirectoryIndex index.html
+RewriteEngine On
+
+RewriteRule ^(?:config|config\.local|migrations|router)\.php$ - [F,L]
+RewriteRule ^api(?:/.*)?$ api.php [L,QSA]
+RewriteRule ^run-migrace/?$ run-migrace.php [L,QSA]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
