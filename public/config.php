@@ -5,7 +5,7 @@ function app_config(): array
 {
     $localFile = __DIR__ . '/config.local.php';
     $local = is_file($localFile) ? require $localFile : [];
-    $value = static fn(string $key, mixed $default = null): mixed => $local[$key] ?? (getenv($key) !== false ? getenv($key) : $default);
+    $value = static fn(string $key, mixed $default = null): mixed => getenv($key) !== false ? getenv($key) : ($local[$key] ?? $default);
     $driver = (string) $value('DB_DRIVER', 'mysql');
     if (!in_array($driver, ['sqlite', 'mysql'], true)) {
         throw new RuntimeException('Neplatný databázový ovladač.');
@@ -30,7 +30,7 @@ function db(): PDO
         if (!is_dir($dataDir) && !mkdir($dataDir, 0770, true) && !is_dir($dataDir)) {
             throw new RuntimeException('Nelze vytvořit datový adresář.');
         }
-        $connection = new PDO('sqlite:' . $dataDir . '/vcely.sqlite');
+        $connection = new PDO('sqlite:' . $dataDir . '/php-dev.sqlite');
         $connection->exec('PRAGMA journal_mode=WAL');
         $connection->exec('PRAGMA foreign_keys=ON');
     } else {

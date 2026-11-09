@@ -1,10 +1,10 @@
 # Včelí deník
 
-Responzivní React aplikace pro evidenci včelstev. Obsahuje registraci, přihlášení, oddělená data uživatelů, stanoviště, úly a záznamy o zásazích, krmení, léčení, medu a financích.
+Responzivní React aplikace pro evidenci včelstev. Obsahuje mapu stanovišť, správu farem, stanovišť, úlů a záznamů o zásazích, krmení, léčení, medu a financích. Farmu lze sdílet pozvánkou s rolí vlastník, editor nebo náhled.
 
 ## Spuštění
 
-Pro místní vývoj spusťte `npm install` a `npm run dev`, potom otevřete http://localhost:5173. Místní vývojový server dál používá SQLite v `data/vcely.sqlite`, aby zůstala dostupná dosavadní lokální data. Produkční hosting používá PHP a MySQL.
+Pro místní vývoj je potřeba PHP 8.1+ s `pdo_sqlite` a Node.js. Spusťte `npm install` a `npm run dev`, potom otevřete http://localhost:5173. Vývojový příkaz spustí PHP API, automaticky provede migrace v `data/php-dev.sqlite` a spustí React. Starší lokální data v `data/vcely.sqlite` ponechává beze změny. Produkční hosting používá PHP a MySQL.
 
 ## Android
 
@@ -21,9 +21,9 @@ npm ci
 npm run build
 ```
 
-GitHub Actions při pushi do `main` sestaví web a nahraje **obsah** složky `dist/` přes existující FTP připojení. Na serveru vytvořte v kořeni webu `config.local.php` podle [public/config.local.example.php](public/config.local.example.php) a doplňte databázové heslo. Tento soubor nesmí být v Gitu a nasazovací workflow jej nevytváří ani nenahrává. Předvyplněný název databáze vychází z dostupných údajů; v administraci hostingu ověřte jeho přesný tvar.
+GitHub Actions při pushi do `main` sestaví web a nahraje **obsah** složky `dist/` přes existující FTP připojení. Na serveru musí být v kořeni webu soubor `config.local.php` s PHP polem klíčů `DB_DRIVER`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` a `DB_PASSWORD`. Tento soubor nesmí být v Gitu; sestavení jej z `dist/` odstraňuje a nasazovací workflow jej nenahrává.
 
-Pak otevřete `https://vaše-doména/run-migrace`. Stránka bez přihlášení vytvoří chybějící tabulky a zobrazí výsledek. Provedené migrace eviduje v `schema_migrations`; opakované otevření je bezpečné.
+Po prvním nasazení a po aktualizaci této verze otevřete `https://vaše-doména/run-migrace`. Stránka bez přihlášení vytvoří chybějící tabulky a převede stávající data každého uživatele do jeho vlastní farmy. Provedené migrace eviduje v `schema_migrations`; opakované otevření je bezpečné.
 
 GitHub Actions také ověřuje syntaxi PHP. Samotný push migraci nespustí; po nasazení ji spustíte ručně otevřením `/run-migrace`.
 

@@ -10,5 +10,10 @@ if ($path === '/run-migrace' || $path === '/run-migrace/') {
     return true;
 }
 if (is_file(__DIR__ . $path)) return false;
+if (is_file(__DIR__ . '/index.html')) {
+    header('Content-Type: text/html; charset=utf-8');
+    readfile(__DIR__ . '/index.html');
+    return true;
+}
 http_response_code(404);
 echo 'Nenalezeno.';
