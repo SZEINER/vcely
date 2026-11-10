@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/api_core.php';
+require_once __DIR__ . '/mailer.php';
 
 function user_farms(string $userId): array
 {
@@ -50,6 +51,7 @@ function handle_farms(string $path, string $method, array $user): void
             require_farm($farmId, $uid, owner: true);
             if (one('SELECT id FROM apiaries WHERE farm_id=? LIMIT 1', [$farmId])) fail('Nejprve smažte nebo přesuňte stanoviště farmy.');
             if (one('SELECT id FROM records WHERE farm_id=? LIMIT 1', [$farmId])) fail('Farma obsahuje záznamy.');
+            if (one('SELECT id FROM stock_items WHERE farm_id=? LIMIT 1', [$farmId])) fail('Farma obsahuje položky skladu.');
             db()->beginTransaction();
             try {
                 execute_sql('DELETE FROM farm_invites WHERE farm_id=?', [$farmId]);
@@ -68,7 +70,14 @@ function handle_farms(string $path, string $method, array $user): void
         if ($existingUser && farm_role($farmId, $existingUser['id'])) fail('Uživatel už je členem farmy.', 409);
         $token = bin2hex(random_bytes(32)); $inviteId = uuid(); $now = iso_now();
         execute_sql('INSERT INTO farm_invites (id, farm_id, email, role, token_hash, created_by, expires_at, accepted_at, created_at) VALUES (?,?,?,?,?,?,?,?,?)', [$inviteId, $farmId, $email, $role, hash('sha256', $token), $uid, gmdate('Y-m-d\TH:i:s\Z', time() + 7 * 86400), null, $now]);
-        respond(['id' => $inviteId, 'email' => $email, 'role' => $role, 'token' => $token, 'expires_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 7 * 86400)], 201);
+        $sent = false;
+        try {
+            $farm = one('SELECT name FROM farms WHERE id=?', [$farmId]);
+            $sent = send_invitation_email($email, $farm['name'], $role, $token);
+        } catch (Throwable $error) {
+            error_log('Odeslání pozvánky selhalo: ' . $error->getMessage());
+        }
+        respond(['id' => $inviteId, 'email' => $email, 'role' => $role, 'token' => $token, 'email_sent' => $sent, 'expires_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 7 * 86400)], 201);
     }
     if (preg_match('~^/api/farms/([a-f0-9-]{36})/invites/([a-f0-9-]{36})$~', $path, $matches) && $method === 'DELETE') {
         require_farm($matches[1], $uid, owner: true);

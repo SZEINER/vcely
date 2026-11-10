@@ -2,7 +2,7 @@ Options -Indexes
 DirectoryIndex index.html
 RewriteEngine On
 
-RewriteRule ^(?:config|config\.local|migrations|migrations_v2|router|api_auth|api_core|api_entities|api_farms|api_router)\.php$ - [F,L]
+RewriteRule ^(?:config|config\.local|migrations|migrations_v2|migrations_v3|router|mailer|api_auth|api_core|api_entities|api_farms|api_stock|api_router)\.php$ - [F,L]
 RewriteRule ^api(?:/.*)?$ api.php [L,QSA]
 RewriteRule ^run-migrace/?$ run-migrace.php [L,QSA]
 

@@ -14,7 +14,7 @@ function fail(string $message, int $status = 400): never { respond(['error' => $
 function clean(mixed $value, int $length = 200): string { return mb_substr(trim(is_scalar($value) ? (string) $value : ''), 0, $length); }
 function request_body(): array
 {
-    if ((int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 32768) fail('Požadavek je příliš velký.', 413);
+    if ((int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 500000) fail('Požadavek je příliš velký.', 413);
     $body = json_decode(file_get_contents('php://input') ?: '{}', true);
     if (!is_array($body)) fail('Neplatný JSON.');
     return $body;

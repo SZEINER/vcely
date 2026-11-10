@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/migrations_v2.php';
+require_once __DIR__ . '/migrations_v3.php';
 
 function run_migrations(): string
 {
@@ -34,5 +35,6 @@ function run_migrations(): string
         else execute_sql('INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, ?)', [1, gmdate('Y-m-d\TH:i:s\Z')]);
     }
     $createdV2 = run_migration_v2($mysql);
-    return ($createdV1 || $createdV2) ? 'Databázové migrace dokončeny.' : 'Databázové schéma je aktuální.';
+    $createdV3 = run_migration_v3($mysql);
+    return ($createdV1 || $createdV2 || $createdV3) ? 'Databázové migrace dokončeny.' : 'Databázové schéma je aktuální.';
 }

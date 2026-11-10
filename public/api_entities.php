@@ -33,7 +33,7 @@ function handle_entities(string $path, string $method, array $user): void
     if ($path === '/api/data' && $method === 'GET') {
         $farms = user_farms($uid);
         $farmId = clean($_GET['farm_id'] ?? ($farms[0]['id'] ?? ''), 50);
-        if ($farmId === '') respond(['farms' => [], 'farm' => null, 'apiaries' => [], 'hives' => [], 'records' => [], 'members' => [], 'invites' => []]);
+        if ($farmId === '') respond(['farms' => [], 'farm' => null, 'apiaries' => [], 'hives' => [], 'records' => [], 'stock' => [], 'members' => [], 'invites' => []]);
         $role = require_farm($farmId, $uid);
         $farm = one('SELECT * FROM farms WHERE id=?', [$farmId]);
         $farm['role'] = $role;
@@ -43,6 +43,7 @@ function handle_entities(string $path, string $method, array $user): void
             'apiaries' => many('SELECT * FROM apiaries WHERE farm_id=? ORDER BY created_at DESC', [$farmId]),
             'hives' => many('SELECT h.* FROM hives h JOIN apiaries a ON a.id=h.apiary_id WHERE a.farm_id=? ORDER BY h.created_at DESC', [$farmId]),
             'records' => many('SELECT * FROM records WHERE farm_id=? ORDER BY date DESC, created_at DESC', [$farmId]),
+            'stock' => many('SELECT * FROM stock_items WHERE farm_id=? ORDER BY created_at DESC', [$farmId]),
             'members' => many('SELECT u.id, u.name, u.email, m.role, m.created_at FROM farm_members m JOIN users u ON u.id=m.user_id WHERE m.farm_id=? ORDER BY m.role, u.name', [$farmId]),
             'invites' => $role === 'owner' ? many('SELECT id, email, role, expires_at, created_at FROM farm_invites WHERE farm_id=? AND accepted_at IS NULL AND expires_at>? ORDER BY created_at DESC', [$farmId, iso_now()]) : [],
         ]);

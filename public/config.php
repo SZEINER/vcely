@@ -30,7 +30,8 @@ function db(): PDO
         if (!is_dir($dataDir) && !mkdir($dataDir, 0770, true) && !is_dir($dataDir)) {
             throw new RuntimeException('Nelze vytvořit datový adresář.');
         }
-        $connection = new PDO('sqlite:' . $dataDir . '/php-dev.sqlite');
+        $sqlitePath = getenv('DB_SQLITE_PATH') ?: $dataDir . '/php-dev.sqlite';
+        $connection = new PDO('sqlite:' . $sqlitePath);
         $connection->exec('PRAGMA journal_mode=WAL');
         $connection->exec('PRAGMA foreign_keys=ON');
     } else {

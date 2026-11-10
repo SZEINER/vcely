@@ -1,6 +1,6 @@
 # Včelí deník
 
-Responzivní React aplikace pro evidenci včelstev. Obsahuje mapu stanovišť, správu farem, stanovišť, úlů a záznamů o zásazích, krmení, léčení, medu a financích. Farmu lze sdílet pozvánkou s rolí vlastník, editor nebo náhled.
+Responzivní React aplikace pro evidenci včelstev. Obsahuje úvodní stránku `/uvod`, mapu stanovišť s přehledem úlů, správu farem, stanovišť, úlů, skladu s fotografiemi a záznamů o zásazích, krmení, léčení, medu a financích. Farmu lze sdílet pozvánkou s rolí vlastník, editor nebo náhled.
 
 ## Spuštění
 
@@ -23,8 +23,12 @@ npm run build
 
 GitHub Actions při pushi do `main` sestaví web a nahraje **obsah** složky `dist/` přes existující FTP připojení. Na serveru musí být v kořeni webu soubor `config.local.php` s PHP polem klíčů `DB_DRIVER`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` a `DB_PASSWORD`. Tento soubor nesmí být v Gitu; sestavení jej z `dist/` odstraňuje a nasazovací workflow jej nenahrává.
 
-Po prvním nasazení a po aktualizaci této verze otevřete `https://vaše-doména/run-migrace`. Stránka bez přihlášení vytvoří chybějící tabulky a převede stávající data každého uživatele do jeho vlastní farmy. Provedené migrace eviduje v `schema_migrations`; opakované otevření je bezpečné.
+Po prvním nasazení a po aktualizaci této verze otevřete `https://vaše-doména/run-migrace`. Stránka bez přihlášení vytvoří chybějící tabulky včetně skladu a převede stávající data každého uživatele do jeho vlastní farmy. Provedené migrace eviduje v `schema_migrations`; opakované otevření je bezpečné.
 
 GitHub Actions také ověřuje syntaxi PHP. Samotný push migraci nespustí; po nasazení ji spustíte ručně otevřením `/run-migrace`.
+
+## E-mailové pozvánky
+
+Pokud na serveru doplníte do souboru `config.local.php` klíče `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_HOST` (`smtp.seznam.cz`), `SMTP_PORT` (`465`) a `APP_URL` (veřejná HTTPS adresa aplikace), budou se pozvánky posílat e-mailem. Bez těchto klíčů aplikace stále vytvoří odkaz ke zkopírování. Heslo k e-mailu patří pouze do tohoto souboru na serveru nebo do proměnných prostředí, nikdy do Gitu.
 
 Aplikace je první funkční verze. Před veřejným provozem je vhodné doplnit obnovu hesla, ověření e-mailu a ochranu proti hromadným pokusům o přihlášení.
