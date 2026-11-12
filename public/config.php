@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function app_config(): array
 {
-    $localFile = __DIR__ . '/config.local.php';
+    $localFile = is_file(__DIR__ . '/config.local.php') ? __DIR__ . '/config.local.php' : dirname(__DIR__) . '/config.local.php';
     $local = is_file($localFile) ? require $localFile : [];
     $value = static fn(string $key, mixed $default = null): mixed => getenv($key) !== false ? getenv($key) : ($local[$key] ?? $default);
     $driver = (string) $value('DB_DRIVER', 'mysql');

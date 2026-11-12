@@ -5,7 +5,7 @@ function mail_setting(string $key): string
 {
     $env = getenv($key);
     if ($env !== false) return (string) $env;
-    $path = __DIR__ . '/config.local.php';
+    $path = is_file(__DIR__ . '/config.local.php') ? __DIR__ . '/config.local.php' : dirname(__DIR__) . '/config.local.php';
     $local = is_file($path) ? require $path : [];
     return (string) ($local[$key] ?? '');
 }

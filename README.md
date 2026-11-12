@@ -32,3 +32,13 @@ GitHub Actions také ověřuje syntaxi PHP. Samotný push migraci nespustí; po 
 Pokud na serveru doplníte do souboru `config.local.php` klíče `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_HOST` (`smtp.seznam.cz`), `SMTP_PORT` (`465`) a `APP_URL` (veřejná HTTPS adresa aplikace), budou se pozvánky posílat e-mailem. Bez těchto klíčů aplikace stále vytvoří odkaz ke zkopírování. Heslo k e-mailu patří pouze do tohoto souboru na serveru nebo do proměnných prostředí, nikdy do Gitu.
 
 Aplikace je první funkční verze. Před veřejným provozem je vhodné doplnit obnovu hesla, ověření e-mailu a ochranu proti hromadným pokusům o přihlášení.
+
+## BeeMap a ApiVčelař
+
+Po aktualizaci spusťte `/run-migrace`. BeeMap pak na stránce **Mapa** zobrazuje ohniska moru a hniloby včelího plodu a skutečné polygony ochranných pásem ze [zdrojové mapy SVS](https://svs.gov.cz/mapove-vystupy-ohnisek-nebezpecnych-nakaz-a-ochrannych-pasem/). Nové API nabízí `GET /api/beemap/health`, `/outbreaks`, `/zones`, `/geojson` a `/sources`. Podporuje parametry `disease=MVP|HVP`, `active=1|0|all` a `area=`. Přístup vyžaduje běžné přihlášení do aplikace. GeoJSON vrací pouze záznamy s ověřenou geometrií.
+
+Import se spustí při prvním zobrazení mapy a nejvýše jednou za hodinu při dalším požadavku. Pro pravidelnou aktualizaci i bez návštěvníků nastavte hodinový cron na `php /cesta/k/webu/sync-beemap-cli.php`; skript je součástí `dist/`. Chyba zdroje neodstraní poslední úspěšná data; stav a datum importu ukazuje API i mapa. Před veřejným opakovaným stahováním a dalším poskytováním dat ověřte podmínky použití u SVS. Použité veřejné rozhraní mapy není zdokumentované jako stabilní API.
+
+BeeMap používá stávající databázi MySQL/SQLite a ukládá geometrii jako GeoJSON, aby nevyžadoval výměnu původní databáze aplikace. Požadavek na PostgreSQL/PostGIS z dodaného plánu tím zatím splněn není.
+
+Pro ApiVčelař nastavte v ignorovaném kořenovém `config.local.php` (na produkčním serveru v kořeni webu) nebo v proměnných prostředí `APIVCELAR_CLIENT_ID`, `APIVCELAR_CLIENT_SECRET` a `APIVCELAR_OWNER_EMAIL`. Údaje jsou v dodaném integračním balíčku; nepatří do Gitu ani do prohlížeče. Vlastník farmy s uvedeným e-mailem pak otevře detail správného úlu a použije **Připojit tento úl**. Přístupový token je vázaný na jediný úl, takže propojte pouze odpovídající úl. V detailu se zobrazují poslední dostupná měření včetně hmotnosti. Integrace je pro čtení; zápis do externího deníku není zapnutý.

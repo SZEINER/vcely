@@ -3,6 +3,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/migrations_v2.php';
 require_once __DIR__ . '/migrations_v3.php';
+require_once __DIR__ . '/migrations_v4.php';
+require_once __DIR__ . '/migrations_v5.php';
 
 function run_migrations(): string
 {
@@ -36,5 +38,7 @@ function run_migrations(): string
     }
     $createdV2 = run_migration_v2($mysql);
     $createdV3 = run_migration_v3($mysql);
-    return ($createdV1 || $createdV2 || $createdV3) ? 'Databázové migrace dokončeny.' : 'Databázové schéma je aktuální.';
+    $createdV4 = run_migration_v4($mysql);
+    $createdV5 = run_migration_v5($mysql);
+    return ($createdV1 || $createdV2 || $createdV3 || $createdV4 || $createdV5) ? 'Databázové migrace dokončeny.' : 'Databázové schéma je aktuální.';
 }

@@ -105,7 +105,7 @@ function App() {
       {error && <div className="error-banner" role="alert">{error}<button onClick={() => setError('')} aria-label="Zavřít"><X size={16}/></button></div>}{notice && <div className="success-banner" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Zavřít"><X size={16}/></button></div>}
       {page === 'Úvod' && <HomePage/>}
       {page === 'Přehled' && <><div className="stats"><Stat icon={MapPin} label="Stanoviště" value={data.apiaries.length} tone="green"/><Stat icon={Boxes} label="Aktivní úly" value={data.hives.filter(h => h.status === 'Aktivní').length} tone="amber"/><Stat icon={ClipboardList} label="Záznamy" value={data.records.length} tone="blue"/><Stat icon={Droplets} label="Med celkem" value={`${totalHoney.toLocaleString('cs-CZ')} kg`} tone="rose"/></div><div className="dashboard-grid"><section className="panel"><PanelHead title="Poslední záznamy" action={() => setPage('Záznamy')}/><RecordList records={data.records.slice(0, 5)} data={data} compact onView={item => setModal({ type: 'detail', kind: 'records', item })}/></section><section className="panel"><PanelHead title="Stanoviště" action={() => setPage('Stanoviště')}/>{data.apiaries.length ? data.apiaries.slice(0, 4).map(a => <button className="apiary-mini mini-button" key={a.id} onClick={() => setModal({ type: 'detail', kind: 'apiaries', item: a })}><div className="mini-icon"><MapPin size={18}/></div><div><strong>{a.name}</strong><small>{a.location || 'Bez uvedené lokality'} · {data.hives.filter(h => h.apiary_id === a.id).length} úlů</small></div><ChevronRight size={16}/></button>) : <Empty title="Zatím žádné stanoviště" text="Začněte přidáním místa, kde chováte včely."/>}</section></div></>}
-      {page === 'Mapa' && <section className="panel map-panel"><MapCanvas apiaries={data.apiaries} hives={data.hives} records={data.records}/><div className="map-list"><h2>Stanoviště na mapě</h2>{data.apiaries.filter(a => a.latitude !== null && a.longitude !== null).length ? data.apiaries.filter(a => a.latitude !== null && a.longitude !== null).map(a => <button key={a.id} onClick={() => setModal({ type: 'detail', kind: 'apiaries', item: a })}><MapPin size={16}/><span>{a.name}</span><small>{a.location}</small><ChevronRight size={16}/></button>) : <p>Stanoviště zatím nemají souřadnice. Otevřete stanoviště a vyberte jeho polohu na mapě.</p>}</div></section>}
+      {page === 'Mapa' && <BeeMapPanel data={data} onView={item => setModal({ type: 'detail', kind: 'apiaries', item })}/>}
       {page === 'Stanoviště' && <EntityList kind="apiaries" items={data.apiaries} data={data} onView={item => setModal({ type: 'detail', kind: 'apiaries', item })}/>}
       {page === 'Úly' && <EntityList kind="hives" items={data.hives} data={data} onView={item => setModal({ type: 'detail', kind: 'hives', item })}/>}
       {['Záznamy', 'Med', 'Léčení', 'Finance'].includes(page) && <section className="panel list-panel"><RecordList records={visibleRecords} data={data} onView={item => setModal({ type: 'detail', kind: 'records', item })}/></section>}
@@ -131,8 +131,22 @@ function Empty({ title, text }) { return <div className="empty"><div className="
 function EntityList({ kind, items, data, onView }) { return <section className="panel list-panel">{items.length ? items.map(item => <button className="entity-row entity-button" key={item.id} onClick={() => onView(item)}><div className={'entity-icon ' + (kind === 'apiaries' ? 'green' : 'amber')}>{kind === 'apiaries' ? <MapPin size={22}/> : <Boxes size={22}/>}</div><div className="entity-main"><h3>{item.name} {kind === 'hives' && <span className="badge">{item.status}</span>}</h3><p>{kind === 'apiaries' ? `${item.location || 'Bez uvedené lokality'} · ${data.hives.filter(h => h.apiary_id === item.id).length} úlů` : `${data.apiaries.find(a => a.id === item.apiary_id)?.name || 'Stanoviště'}${item.queen_year ? ` · Matka ${item.queen_year}` : ''}`}</p>{item.note && <small>{item.note}</small>}</div><Eye size={18} className="row-eye"/></button>) : <Empty title={kind === 'apiaries' ? 'Zatím žádná stanoviště' : 'Zatím žádné úly'} text={kind === 'apiaries' ? 'Přidejte první stanoviště a označte jeho polohu na mapě.' : 'Nejprve založte stanoviště a pak na něj přidejte úly.'}/>}</section>; }
 function RecordList({ records, data, compact, onView }) { return records.length ? <div className="record-list">{records.map(r => <button className="record-row record-button" key={r.id} onClick={() => onView(r)}><div className={'record-type ' + r.type.toLowerCase()}>{({ Med: <Droplets size={19}/>, Léčení: <HeartPulse size={19}/>, Finance: <Wallet size={19}/> })[r.type] || <ClipboardList size={19}/>}</div><div className="record-copy"><strong>{r.title}</strong><span>{r.type} · {data.hives.find(h => h.id === r.hive_id)?.name || data.apiaries.find(a => a.id === r.apiary_id)?.name || 'Obecný záznam'}</span>{!compact && r.note && <small>{r.note}</small>}</div><div className="record-side"><time>{new Date(r.date + 'T12:00:00').toLocaleDateString('cs-CZ')}</time>{r.amount != null && <b>{Number(r.amount).toLocaleString('cs-CZ')} {r.unit}</b>}</div><Eye size={17} className="row-eye"/></button>)}</div> : <Empty title="Zatím tu nic není" text="Přidejte první záznam a začněte si tvořit historii svého včelaření."/>; }
 
-function MapCanvas({ apiaries = [], hives = [], records = [], onPick, picked, compact = false }) {
+function BeeMapPanel({ data, onView }) {
+  const [mapData, setMapData] = useState(null), [mapError, setMapError] = useState('');
+  const [disease, setDisease] = useState('all'), [showOutbreaks, setShowOutbreaks] = useState(true), [showZones, setShowZones] = useState(true);
+  useEffect(() => {
+    let live = true;
+    request('/beemap/geojson').then(result => { if (live) setMapData(result); }).catch(error => { if (live) setMapError(error.message); });
+    return () => { live = false; };
+  }, []);
+  const features = (mapData?.features || []).filter(feature => (disease === 'all' || feature.properties.disease === disease) && (feature.properties.kind === 'outbreak' ? showOutbreaks : showZones));
+  const updated = mapData?.last_success_at ? new Date(mapData.last_success_at).toLocaleString('cs-CZ') : null;
+  return <section className="panel map-panel"><div className="beemap-controls"><div><strong>Mapa nákaz včel</strong><small>{updated ? `Data SVS aktualizována: ${updated}${mapData.stale ? ' · zdroj nyní nedostupný' : ''}` : mapError || 'Načítám data SVS…'}</small></div><div className="beemap-filters"><label>Druh nákazy<select aria-label="Druh nákazy" value={disease} onChange={e => setDisease(e.target.value)}><option value="all">MVP i HVP</option><option value="MVP">Mor včelího plodu</option><option value="HVP">Hniloba včelího plodu</option></select></label><label><input type="checkbox" checked={showOutbreaks} onChange={e => setShowOutbreaks(e.target.checked)}/> Ohniska</label><label><input type="checkbox" checked={showZones} onChange={e => setShowZones(e.target.checked)}/> Ochranná pásma</label></div></div><MapCanvas apiaries={data.apiaries} hives={data.hives} records={data.records} beemapFeatures={features}/><div className="beemap-source">Zobrazeno {features.length} záznamů. Zdroj: <a href="https://svs.gov.cz/mapove-vystupy-ohnisek-nebezpecnych-nakaz-a-ochrannych-pasem/" target="_blank" rel="noreferrer">Státní veterinární správa ČR</a>. Přesný rozsah opatření ověřte v úředním zdroji.</div><div className="map-list"><h2>Stanoviště na mapě</h2>{data.apiaries.filter(a => a.latitude !== null && a.longitude !== null).length ? data.apiaries.filter(a => a.latitude !== null && a.longitude !== null).map(a => <button key={a.id} onClick={() => onView(a)}><MapPin size={16}/><span>{a.name}</span><small>{a.location}</small><ChevronRight size={16}/></button>) : <p>Stanoviště zatím nemají souřadnice. Otevřete stanoviště a vyberte jeho polohu na mapě.</p>}</div></section>;
+}
+
+function MapCanvas({ apiaries = [], hives = [], records = [], onPick, picked, compact = false, beemapFeatures = [] }) {
   const root = useRef(null), mapRef = useRef(null), layerRef = useRef(null), onPickRef = useRef(onPick);
+  const beemapFitRef = useRef(false);
   onPickRef.current = onPick;
   useEffect(() => {
     if (!root.current || mapRef.current) return;
@@ -146,6 +160,16 @@ function MapCanvas({ apiaries = [], hives = [], records = [], onPick, picked, co
   useEffect(() => {
     const map = mapRef.current, layer = layerRef.current; if (!map || !layer) return;
     layer.clearLayers(); const points = [];
+    beemapFeatures.forEach(feature => {
+      const color = feature.properties.disease === 'MVP' ? '#bb463d' : '#6346aa';
+      L.geoJSON(feature, { style: { color, fillColor: color, fillOpacity: 0.18, weight: 2 }, pointToLayer: (_, latlng) => L.circleMarker(latlng, { radius: 8, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 }), onEachFeature: (_, shape) => {
+        const p = feature.properties, popup = document.createElement('div');
+        const title = document.createElement('strong'); title.textContent = `${p.kind === 'outbreak' ? 'Ohnisko' : 'Ochranné pásmo'} · ${p.disease}`; popup.appendChild(title);
+        for (const value of [p.reference_no, p.location, p.valid_from && `Od: ${p.valid_from}`, p.valid_to && `Do: ${p.valid_to}`]) if (value) { const line = document.createElement('div'); line.textContent = value; popup.appendChild(line); }
+        const link = document.createElement('a'); link.href = 'https://svs.gov.cz/mapove-vystupy-ohnisek-nebezpecnych-nakaz-a-ochrannych-pasem/'; link.textContent = 'Úřední mapa SVS'; link.target = '_blank'; link.rel = 'noopener noreferrer'; popup.appendChild(link);
+        shape.bindPopup(popup);
+      } }).addTo(layer);
+    });
     apiaries.filter(a => a.latitude != null && a.longitude != null).forEach(a => {
       const point = [Number(a.latitude), Number(a.longitude)]; points.push(point);
       const marker = L.marker(point, { icon: apiaryIcon }).addTo(layer);
@@ -161,9 +185,10 @@ function MapCanvas({ apiaries = [], hives = [], records = [], onPick, picked, co
       marker.bindPopup(popup);
     });
     if (picked?.latitude != null && picked?.longitude != null && picked.latitude !== '' && picked.longitude !== '') { const point = [Number(picked.latitude), Number(picked.longitude)]; points.push(point); L.circleMarker(point, { radius: 9, color: '#173f36', fillColor: '#e5af48', fillOpacity: 1 }).addTo(layer); }
-    if (points.length > 1) map.fitBounds(points, { padding: [35, 35], maxZoom: 13 });
-    else if (points.length === 1) map.setView(points[0], 13);
-  }, [apiaries, hives, records, compact, picked?.latitude, picked?.longitude]);
+    if (beemapFeatures.length && !beemapFitRef.current) { map.setView([49.8, 15.5], 7); beemapFitRef.current = true; }
+    else if (!beemapFitRef.current && points.length > 1) map.fitBounds(points, { padding: [35, 35], maxZoom: 13 });
+    else if (!beemapFitRef.current && points.length === 1) map.setView(points[0], 13);
+  }, [apiaries, hives, records, compact, beemapFeatures, picked?.latitude, picked?.longitude]);
   return <div className={'map-canvas ' + (compact ? 'compact' : '')} ref={root} role="img" aria-label={onPick ? 'Kliknutím na mapu vyberete souřadnice stanoviště' : 'Mapa včelích stanovišť'}/>;
 }
 
@@ -184,7 +209,15 @@ function EntityForm({ kind, item, data, defaultType, onClose, onSave }) {
 function DetailModal({ kind, item, data, canWrite, onClose, onEdit, onDelete }) {
   const name = item.name || item.title;
   const rows = kind === 'apiaries' ? [['Lokalita', item.location || 'Neuvedena'], ['Souřadnice', item.latitude != null ? `${item.latitude}, ${item.longitude}` : 'Neuvedeny'], ['Počet úlů', data.hives.filter(h => h.apiary_id === item.id).length]] : kind === 'hives' ? [['Stanoviště', data.apiaries.find(a => a.id === item.apiary_id)?.name || '—'], ['Stav', item.status], ['Rok matky', item.queen_year || 'Neuveden']] : [['Typ', item.type], ['Datum', new Date(item.date + 'T12:00:00').toLocaleDateString('cs-CZ')], ['Stanoviště', data.apiaries.find(a => a.id === item.apiary_id)?.name || '—'], ['Úl', data.hives.find(h => h.id === item.hive_id)?.name || '—'], ['Množství / částka', item.amount == null ? '—' : `${Number(item.amount).toLocaleString('cs-CZ')} ${item.unit || ''}`]];
-  return <ModalShell title={name} onClose={onClose}><div className="detail-grid">{rows.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>{item.note && <div className="detail-note"><span>Poznámka</span><p>{item.note}</p></div>}{canWrite && <div className="modal-actions detail-actions"><button className="secondary-button danger-button" onClick={onDelete}><Trash2 size={16}/>Smazat</button><button className="primary-button" onClick={onEdit}><Pencil size={16}/>Upravit</button></div>}</ModalShell>;
+  return <ModalShell title={name} onClose={onClose}><div className="detail-grid">{rows.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>{kind === 'hives' && <HiveTelemetry hiveId={item.id}/>}{item.note && <div className="detail-note"><span>Poznámka</span><p>{item.note}</p></div>}{canWrite && <div className="modal-actions detail-actions"><button className="secondary-button danger-button" onClick={onDelete}><Trash2 size={16}/>Smazat</button><button className="primary-button" onClick={onEdit}><Pencil size={16}/>Upravit</button></div>}</ModalShell>;
+}
+function HiveTelemetry({ hiveId }) {
+  const [state, setState] = useState(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const load = () => request(`/hives/${hiveId}/telemetry`).then(setState).catch(() => setState(null));
+  useEffect(() => { load(); }, [hiveId]);
+  const changeLink = async method => { setBusy(true); setError(''); try { await request(`/hives/${hiveId}/apivcelar-link`, { method }); await load(); } catch (cause) { setError(cause.message); } finally { setBusy(false); } };
+  if (!state || (!state.linked && !state.can_link)) return null;
+  return <section className="hive-telemetry"><div className="hive-telemetry-head"><h3>Data z ApiVčelař</h3>{state.can_link && <button type="button" className="secondary-button" disabled={busy} onClick={() => changeLink(state.linked ? 'DELETE' : 'POST')}>{state.linked ? 'Odpojit' : 'Připojit tento úl'}</button>}</div>{error && <p role="alert">{error}</p>}{state.linked && (state.error ? <p>{state.error}</p> : state.measurements.length ? <div className="telemetry-grid">{state.measurements.map((value, index) => <div key={`${value.code}:${index}`}><span>{value.name || value.code}</span><strong>{Number(value.value).toLocaleString('cs-CZ')} {value.unit}</strong><small>{new Date(value.timestamp).toLocaleString('cs-CZ')}</small></div>)}</div> : <p>Pro tento úl zatím nejsou dostupná měření.</p>)}</section>;
 }
 function InviteModal({ onClose, onSave }) { const [busy, setBusy] = useState(false), [error, setError] = useState(''); const submit = async e => { e.preventDefault(); setBusy(true); try { await onSave(Object.fromEntries(new FormData(e.currentTarget))); } catch (err) { setError(err.message); } finally { setBusy(false); } }; return <ModalShell title="Pozvat uživatele" onClose={onClose}><p className="modal-help">Vytvoří se odkaz platný 7 dní. Pozvaný se musí přihlásit nebo zaregistrovat uvedeným e-mailem.</p><form onSubmit={submit} className="app-form"><label>E-mail pozvaného *<input name="email" type="email" required placeholder="kolega@email.cz"/></label><label>Oprávnění<select name="role"><option value="editor">Editor — může měnit data</option><option value="viewer">Náhled — pouze čtení</option></select></label>{error && <div className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Zrušit</button><button className="primary-button" disabled={busy}>Vytvořit pozvánku</button></div></form></ModalShell>; }
 function UsersPage({ data, user, isOwner, inviteLink, onChange, onRemove, onRemoveInvite, onCopyInvite }) {
